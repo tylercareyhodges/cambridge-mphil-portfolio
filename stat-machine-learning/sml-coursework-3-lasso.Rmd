@@ -12,7 +12,7 @@ library(glmnet)
 ```
 
 Problem 2: LASSO Regression Analysis
-Using the preprocessed Salary_Data.csv, we split the data, fit LASSO models, and optimise the regularisation parameter (\lambda). All code uses British spelling (e.g., "standardise").
+Using the preprocessed Salary_Data.csv, we split the data, fit LASSO models, and optimise the regularisation parameter (\lambda).
 
 2(i) Train-Validation-Test Split
 
