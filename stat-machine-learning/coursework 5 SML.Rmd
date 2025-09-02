@@ -1,0 +1,95 @@
+---
+title: "Coursework 5, 2(iii) and 2(iv)"
+author: "Tyler Carey-Hodges, Youssef Othman"
+date: "2025-03-25"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r 2(i)}
+my_gauss_sketch <- function(r, p) {
+  # Check inputs are natural numbers and satisfy 1 <= r <= p
+  if (!is.numeric(r) || !is.numeric(p) || r < 1 || r > p || r != round(r) || p != round(p)) {
+    stop("Inputs r and p must be natural numbers with 1 <= r <= p")
+  }
+  
+  # Generate r*p i.i.d. N(0, 1) entries
+  entries <- rnorm(r * p, mean = 0, sd = 1)
+  
+  # Create r x p matrix
+  S <- matrix(entries, nrow = r, ncol = p)
+  
+  return(S)
+}
+```
+
+```{r 2(ii)}
+my_sse <- function(s, r, p) {
+    # Validate inputs: 1 <= s <= r <= p (natural numbers)
+    if (!all(c(s, r, p) %% 1 == 0) || s < 1 || s > r || r > p) {
+        stop("s, r, p must be natural numbers with 1 <= s <= r <= p")
+    }
+    
+    # Create r x p matrix of zeros
+    S <- matrix(0, nrow = r, ncol = p)
+    
+    for (i in 1:r) {
+        # Randomly select s distinct columns for non-zero entries
+        nnz_cols <- sample(p, s, replace = FALSE)
+        # Assign ±sqrt(p/s) with equal probability
+        signs <- sample(c(-1, 1), s, replace = TRUE)
+        S[i, nnz_cols] <- signs * sqrt(p/s)
+    }
+    
+    return(S)
+}
+```
+
+```{r 2(iii)}
+my_count_sketch <- function(r, p) {
+  # Validate inputs
+  if (!is.numeric(r) || !is.numeric(p) || r < 1 || r > p || r != round(r) || p != round(p)) {
+    stop("Inputs r and p must be natural numbers with 1 <= r <= p")
+  }
+  
+  # Generate entries: +1 or -1 with probability 1/2 each
+  entries <- sample(c(-1, 1), size = r * p, replace = TRUE)
+  
+  # Create r x p matrix
+  S <- matrix(entries, nrow = r, ncol = p)
+  
+  return(S)
+}
+```
+
+```{r 2(iv)}
+my_SJLT_sketch <- function(r, p) {
+  # Validate inputs: ensure r and p are natural numbers with 1 <= r <= p
+  if (!is.numeric(r) || !is.numeric(p) || r < 1 || r > p || r != floor(r) || p != floor(p)) {
+    stop("Inputs r and p must be natural numbers with 1 <= r <= p")
+  }
+  
+  # Compute the value for non-zero entries
+  val <- sqrt(r)
+  
+  # Define possible values
+  values <- c(val, 0, -val)
+  
+  # Define probabilities
+  prob_plus <- 1 / (2 * r)
+  prob_zero <- 1 - 1 / r
+  prob_minus <- 1 / (2 * r)
+  prob_each <- c(prob_plus, prob_zero, prob_minus)
+  
+  # Generate r * p entries
+  entries <- sample(values, size = r * p, replace = TRUE, prob = prob_each)
+  
+  # Create r x p matrix
+  S <- matrix(entries, nrow = r, ncol = p)
+  
+  return(S)
+}
+```
