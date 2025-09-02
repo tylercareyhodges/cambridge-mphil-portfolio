@@ -1,0 +1,337 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+# Question 2 (20 marks)
+
+# Import the data
+setwd("/Users/tyler/Documents")
+pets_data <- read.csv("pets.csv",header = TRUE)
+
+# ---> Question 2ia (2 marks)
+
+# --- curiosity as to which variables are most significant ---
+
+full_model = lm(Prod~., data=pets_data)
+full_model_summary = summary(full_model)
+full_model_summary
+# NTT ***
+# PCT **
+# PTDog *
+
+# ------------------------------------------------------------
+
+# Fit the models
+
+model1 <- lm(Prod ~ DL + PCT, data = pets_data)
+model2 <- lm(Prod ~ 0 + DL + PCT, data = pets_data)
+model3 <- lm(Prod ~ 1 + DL + PCT, data = pets_data)
+model4 <- lm(Prod ~ DL + PCT + DL^2, data = pets_data)
+model5 <- lm(Prod ~ DL + PCT + I(DL^2), data = pets_data)
+model6 <- lm(Prod ~ PCT + poly(DL, 2), data = pets_data)
+
+# Summary of models
+
+summary(model1)
+summary(model2)
+summary(model3)
+summary(model4)
+summary(model5)
+summary(model6)
+
+# Calculate Residual Sum of Squares (RSS) for each model
+
+rss <- c(
+  sum(resid(model1)^2),
+  sum(resid(model2)^2),
+  sum(resid(model3)^2),
+  sum(resid(model4)^2),
+  sum(resid(model5)^2),
+  sum(resid(model6)^2)
+)
+
+# Output RSS for each model
+
+cat("RSS for model 1:", rss[1], "\n")
+cat("RSS for model 2:", rss[2],"\n")
+cat("RSS for model 3:", rss[3], "\n")
+cat("RSS for model 4:",rss[4], "\n")
+cat("RSS for model 5:", rss[5], "\n")
+cat("RSS for model6:", rss[6], "\n")
+
+print(coef(model1))
+print(coef(model2))
+print(coef(model3))
+print(coef(model4))
+print(coef(model5))
+print(coef(model6))
+
+
+
+# ---> Question 2ib (4 marks)
+
+# Define the my_lm function
+
+my_lm <- function(X, Y) {
+  # Check for intercept and add if missing
+  if (!any(apply(X, 2, function(col) all(col == 1)))) {
+    X <- cbind(1, X)
+    colnames(X)[1] <- "(Intercept)"
+  }
+  # Compute OLS estimator
+  X <- as.matrix(X)
+  Y <- as.matrix(Y)
+  beta_hat <- solve(t(X) %*% X) %*% t(X) %*% Y
+  return(beta_hat)
+}
+
+# If X contains categorical data but no pre-processing is done, the matrix operations ( e.g., matrix inversion in (X′X)^−1 ) could fail or produce incorrect results. So by assuming that X does not contain categorical data simplifies the implementation and ensures the computations are valid.
+
+
+
+# ---> Question 2ic (1 mark)
+
+# Create formula with only continious variables (all variables excluding the pet type, since it is not continious/ numerical)
+# The only non numercial column in dataset pets_data is "PT" by clear observation
+
+# Extract design matrix (X) and response (Y)
+formula <- Prod ~ PCT + EW + DL + NTT
+X <- model.matrix(formula, data = pets_data)  # Includes intercept by default
+Y <- data.frame(Prod = pets_data$Prod)        # Response as data frame
+
+# Use my_lm with X and Y
+my_lm_fit <- my_lm(X, Y)
+
+# Fit with lm
+lm_fit <- lm(formula, data = pets_data)
+
+# Compare coefficients (matrix vs vector)
+cat("Coefficient Comparison:\n")
+print(all.equal(as.vector(my_lm_fit), coef(lm_fit), check.attributes = FALSE))
+
+
+
+# ---> Question 2id (3 marks)
+
+pets_data <- read.csv("pets.csv")
+
+# Function to check for non-numeric columns and apply one-hot encoding manually
+
+one_hot_encode_non_numeric <- function(X) {
+  
+  # Identify non-numeric columns
+  non_numeric_cols <- sapply(X, function(x) !is.numeric(x))
+  
+  # Iterate over non-numeric columns
+  for (col in names(X)[non_numeric_cols]) {
+    
+  # Copy data from the non-numeric column
+    column_data <- X[[col]]
+    
+  # Remove the original non-numeric column from dataset
+    X[[col]] <- NULL
+    
+  # Identify unique categories in the non-numeric column (Cat, Dog, ___ ___)
+    unique_vals <- unique(column_data)
+    
+  # Create new columns for each unique category
+    for (val in unique_vals) {
+    # Create a column where rows equal to 'val' are 1, others are 0
+      X[[as.character(val)]] <- ifelse(column_data == val, 1, 0)
+    }
+  }
+  
+  return(X)
+}
+
+# Apply the function to the pets_data
+result <- one_hot_encode_non_numeric(pets_data)
+
+# Print the first 20 rows of the result, so we can see if we are correct
+head(result, 20)
+
+
+
+# ---> Question 2iia (1 mark)
+
+# Fit a single piecewise linear model with knots at 1.5, 3.5, 6
+knots <- c(1.5, 3.5, 6)
+pets_data$PCT_1.5 <- pmax(pets_data$PCT - 1.5, 0)
+pets_data$PCT_3.5 <- pmax(pets_data$PCT - 3.5, 0)
+pets_data$PCT_6 <- pmax(pets_data$PCT - 6, 0)
+
+model <- lm(Prod ~ PCT + PCT_1.5 + PCT_3.5 + PCT_6, data = pets_data)
+
+# Generate predictions for plotting
+pct_grid <- seq(min(pets_data$PCT), max(pets_data$PCT), length.out = 100)
+new_data <- data.frame(
+  PCT = pct_grid,
+  PCT_1.5 = pmax(pct_grid - 1.5, 0),
+  PCT_3.5 = pmax(pct_grid - 3.5, 0),
+  PCT_6 = pmax(pct_grid - 6, 0)
+)
+preds <- predict(model, newdata = new_data)
+
+# Plot
+plot(pets_data$PCT, pets_data$Prod, main = "Piecewise Linear Fit", 
+     xlab = "PCT", ylab = "Prod", pch = 16, col = "green")
+lines(pct_grid, preds, col = "black", lwd = 2)
+
+
+
+# ---> Question 2iib (1 mark)
+
+# Load splines package
+library(splines)
+
+# Define the knots for the linear spline at 1.5, 3.5, and 6
+knot1 <- 1.5
+knot2 <- 3.5
+knot3 <- 6
+
+# Fit the linear spline model using the bs() function to create the spline basis
+model_spline <- lm(Prod ~ bs(PCT, knots = c(knot1, knot2, knot3), degree = 1), data = pets_data)
+
+# Print model summary to check the coefficients
+summary(model_spline)
+
+# Create a sequence of PCT values for smooth plotting of the spline
+pct_range <- seq(min(pets_data$PCT), max(pets_data$PCT), length.out = 100)
+
+# Predict values from the spline model
+predicted_vals_spline <- predict(model_spline, newdata = data.frame(PCT = pct_range))
+
+# Plot the original data and the linear spline fit
+plot(pets_data$PCT, pets_data$Prod, main = "Linear Spline Model Fit", 
+     xlab = "PCT", ylab = "Prod", pch = 16, col = "blue")
+lines(pct_range, predicted_vals_spline, col = "red", lwd = 2)  # Spline fit line
+
+
+
+# ---> Question 2iic (1 mark)
+
+# Fit a cubic spline model with PCT as a predictor and Prod as a response
+cubic_spline_model <- lm(Prod ~ bs(PCT, knots = c(1.5, 3.5, 6)), data = pets_data)
+
+# Plot the original data
+plot(pets_data$PCT, pets_data$Prod, main = "Cubic Spline Fit", 
+     xlab = "PCT", ylab = "Prod", pch = 16, col = "blue")
+
+# Generate a smooth sequence of PCT values for predictions
+smooth_PCT <- seq(min(pets_data$PCT), max(pets_data$PCT), length.out = 100)
+
+# Predict the fitted values for the smooth sequence
+predicted_values <- predict(cubic_spline_model, newdata = data.frame(PCT = smooth_PCT))
+
+# Add the fitted cubic spline line to the plot
+lines(smooth_PCT, predicted_values, col = "black", lwd = 2)
+
+
+
+# ---> Question 2iid (1 mark)
+
+# Fit a natural cubic spline model with PCT as a predictor and Prod as a response
+natural_cubic_spline_model <- lm(Prod ~ ns(PCT, knots = c(1.5, 3.5, 6)), data = pets_data)
+
+# Summary of the natural cubic spline model
+summary(natural_cubic_spline_model)
+
+# Plot the original data
+plot(pets_data$PCT, pets_data$Prod, main = "Natural Cubic Spline Fit", 
+     xlab = "PCT", ylab = "Prod", pch = 16, col = "blue")
+
+# Generate a smooth sequence of PCT values for predictions
+smooth_PCT <- seq(min(pets_data$PCT), max(pets_data$PCT), length.out = 100)
+
+# Predict the fitted values for the smooth sequence
+predicted_values <- predict(natural_cubic_spline_model, newdata = data.frame(PCT = smooth_PCT))
+
+# Add the fitted natural cubic spline line to the plot
+lines(smooth_PCT, predicted_values, col = "black", lwd = 2)
+
+
+
+# ---> Question 2iiia (2 marks)
+
+library(mgcv)
+
+# Fit a GAM with a smooth term for PCT
+gam_model <- gam(Prod ~ s(PCT), data = pets_data)
+
+# Plot the smooth term with confidence intervals
+plot(gam_model, main = "GAM Fit: Nonlinear Relationship", 
+     xlab = "PCT", ylab = "Smooth Effect", shade = TRUE)
+points(pets_data$PCT, pets_data$Prod - mean(pets_data$Prod), 
+       col = "blue", pch = 16)  # Centered response for visualization
+      
+      
+      
+# ---> Question 2iiib (2 marks)
+
+library(mgcv)
+
+# Convert PT to a factor
+pets_data$PT <- as.factor(pets_data$PT)
+
+# Fit the GAM with pet-type-specific smooths
+gam_model <- gam(Prod ~ s(PCT, by = PT, k = 4),  # Remove PT as a main effect
+                 data = pets_data)
+
+# Create separate plots for each pet type
+par(mfrow = c(1, length(levels(pets_data$PT))))  
+for (pet_type in levels(pets_data$PT)) {
+  # Filter data for the current pet type
+  pet_data <- pets_data[pets_data$PT == pet_type, ]
+  
+  # Sort the data by PCT to ensure smooth plotting
+  pet_data <- pet_data[order(pet_data$PCT), ]
+  
+  # Predict fitted values
+  pet_data$Fitted_Prod <- predict(gam_model, 
+                                  newdata = pet_data, 
+                                  type = "response")
+  
+  # Plot the data
+  plot(pet_data$PCT, pet_data$Prod, main = paste("Pet Type:", pet_type),
+       xlab = "PCT", ylab = "Prod", pch = 16, col = "blue")
+  
+  # Add the fitted line (sorted by PCT)
+  lines(pet_data$PCT, pet_data$Fitted_Prod, col = "red", lwd = 2)
+}
+
+
+
+# ---> Question 2iiic (2 marks)
+
+library(mgcv)
+
+# Convert PT to a factor
+pets_data$PT <- as.factor(pets_data$PT)
+
+# Fit a GAM with pet-type-specific smooths (no PT main effect)
+gam_model_NTT <- gam(NTT ~ s(PCT, by = PT, k = 4),  # k controls smoothness
+                     family = poisson, 
+                     data = pets_data)
+
+# Create separate plots for each pet type
+par(mfrow = c(1, length(levels(pets_data$PT))))  # Use factor levels
+for (pet_type in levels(pets_data$PT)) {
+  # Filter and sort data for the current pet type (sorted by PCT)
+  pet_data <- subset(pets_data, PT == pet_type)
+  pet_data <- pet_data[order(pet_data$PCT), ]  
+  
+  # Predict fitted values on the response scale
+  pet_data$Fitted_NTT <- predict(gam_model_NTT, 
+                                 newdata = pet_data, 
+                                 type = "response")
+  
+  # Plot the data
+  plot(pet_data$PCT, pet_data$NTT, 
+       main = paste("Pet Type:", pet_type),
+       xlab = "PCT", ylab = "NTT", 
+       pch = 16, col = "blue")
+  
+  # Add the fitted line (sorted PCT ensures smoothness)
+  lines(pet_data$PCT, pet_data$Fitted_NTT, col = "green", lwd = 2)
+}
