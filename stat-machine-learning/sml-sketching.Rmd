@@ -1,6 +1,6 @@
 ---
-title: "Coursework 5, 2(iii) and 2(iv)"
-author: "Tyler Carey-Hodges, Youssef Othman"
+title: "Coursework 5"
+author: "Tyler Carey-Hodges"
 date: "2025-03-25"
 output: pdf_document
 ---
